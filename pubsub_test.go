@@ -32,7 +32,7 @@ func TestIsParent(t *testing.T) {
 	}
 }
 
-func TestPubSub(t *testing.T) {
+func TestPubSubString(t *testing.T) {
 	var tests = []struct {
 		tp, ts, msg string
 		want        string
@@ -46,6 +46,30 @@ func TestPubSub(t *testing.T) {
 	for _, tt := range tests {
 
 		testname := fmt.Sprintf("%s,%s,%s", tt.tp, tt.ts, tt.msg)
+		t.Run(testname, func(t *testing.T) {
+			ans := psSubInteraction(tt.tp, tt.ts, tt.msg)
+			if ans != tt.want {
+				t.Errorf("got %s, want %s", ans, tt.want)
+			}
+		})
+	}
+}
+
+func TestPubSubInt(t *testing.T) {
+	var tests = []struct {
+		tp, ts string
+		msg    int
+		want   string
+	}{
+		{"a", "a", 42, "42"},
+		{"b", "a", 42, "TIMEOUT"},
+		{"a", "a.c", 42, "42"},
+		{"a.c", "a.c", 42, "42"},
+	}
+
+	for _, tt := range tests {
+
+		testname := fmt.Sprintf("%s,%s,%d", tt.tp, tt.ts, tt.msg)
 		t.Run(testname, func(t *testing.T) {
 			ans := psSubInteraction(tt.tp, tt.ts, tt.msg)
 			if ans != tt.want {
@@ -77,10 +101,10 @@ func TestPubUnsub(t *testing.T) {
 	}
 }
 
-func psSubInteraction(tp string, ts string, msg string) string {
+func psSubInteraction(tp string, ts string, msg interface{}) string {
 	var ps PubSub
 	clk := make(chan bool)
-	ch := make(chan string)
+	ch := make(chan interface{})
 	timeout := make(chan bool, 1)
 
 	go func() {
@@ -98,8 +122,8 @@ func psSubInteraction(tp string, ts string, msg string) string {
 	ps.Publish(tp, msg)
 
 	select {
-	case ans := <-ch:
-		return ans
+	case a := <-ch:
+		return fmt.Sprintf("%v", a)
 	case <-timeout:
 		return "TIMEOUT"
 	}
@@ -108,7 +132,7 @@ func psSubInteraction(tp string, ts string, msg string) string {
 func psUnsubInteraction(tp string, ts string, msg string, unsub bool) string {
 	var ps PubSub
 	clk := make(chan bool)
-	ch := make(chan string)
+	ch := make(chan interface{})
 	timeout := make(chan bool, 1)
 	var ans string
 
@@ -132,7 +156,7 @@ func psUnsubInteraction(tp string, ts string, msg string, unsub bool) string {
 	ps.Publish(tp, msg)
 	select {
 	case a := <-ch:
-		ans += a
+		ans += fmt.Sprintf("%v", a)
 	case <-timeout:
 		ans += "TIMEOUT"
 	}
@@ -142,7 +166,9 @@ func psUnsubInteraction(tp string, ts string, msg string, unsub bool) string {
 
 	select {
 	case a := <-ch:
-		ans += a
+		if !(a == nil) {
+			ans += fmt.Sprintf("%v", a)
+		}
 	case <-timeout:
 		ans += "TIMEOUT"
 	}

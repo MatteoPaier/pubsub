@@ -15,7 +15,7 @@ type PubSub struct {
 // subscriber describes a single subscriber: the topic is interested to and the channel it is using.
 type subscriber struct {
 	topic   string
-	channel chan string
+	channel chan interface{}
 }
 
 // isParent returns true iff topic1 is an ancestor of topic2.
@@ -34,7 +34,7 @@ func isParent(topic1 string, topic2 string) bool {
 }
 
 // Publish allows to write on a specific topic (and its descendants).
-func (ps *PubSub) Publish(topic string, message string) {
+func (ps *PubSub) Publish(topic string, message interface{}) {
 	for _, sub := range ps.subs {
 		if isParent(topic, sub.topic) {
 			sub.channel <- message
@@ -46,9 +46,9 @@ func (ps *PubSub) Publish(topic string, message string) {
 // E.g.
 //  ps.Subscribe("topic1.subtopic")
 // receives also the messages from topic1.
-func (ps *PubSub) Subscribe(topic string) chan string {
+func (ps *PubSub) Subscribe(topic string) chan interface{} {
 	var nsub subscriber
-	var channel chan string = make(chan string)
+	var channel chan interface{} = make(chan interface{})
 	nsub.topic = topic
 	nsub.channel = channel
 	ps.subs = append(ps.subs, nsub)
@@ -56,7 +56,7 @@ func (ps *PubSub) Subscribe(topic string) chan string {
 }
 
 // Unsubscribe allows for the removal of a subscriber's channel. It requires a channel created with Subscribe.
-func (ps *PubSub) Unsubscribe(channel chan string) {
+func (ps *PubSub) Unsubscribe(channel chan interface{}) {
 	for i, sub := range ps.subs {
 		if sub.channel == channel {
 			close(sub.channel)
